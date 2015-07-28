@@ -1,12 +1,44 @@
+import cmd
+import code
+import pprint
 import sys
-__salt__ = {}
+
+import salt.loader
+
+__salt__ = __grains__ = __pillar__ = __opts__ = {}
+
 
 def __virtual__():
     return True
 
 
-def repl():
+def shell():
+    """Jump into a Python Shell"""
+    env = {
+        '__grains__': __grains__,
+        '__opts__': __opts__,
+        '__pillar__': __pillar__,
+        '__salt__': __salt__,
+        '__out__': salt.loader.outputters(__opts__),
+        'pprint': pprint.pprint,
+    }
 
+    try:
+        import readline
+    except ImportError:
+        pass
+    else:
+        import rlcompleter
+        readline.set_completer(rlcompleter.Completer(env).complete)
+        if(sys.platform == 'darwin'):
+            readline.parse_and_bind("bind ^I rl_complete")
+        else:
+            readline.parse_and_bind("tab:complete")
+
+    code.interact(local=env)
+
+
+def repl():
     class SaltREPL(cmd.Cmd):
         prompt = '<Salt> '
 
@@ -42,7 +74,3 @@ def repl():
                 self.print_topics(self.doc_header, sorted(__salt__.keys()), 15, 80)
 
     return SaltREPL().cmdloop()
-    if sys.platform == 'darwin':
-        SaltREPL('bind ^I rl_complete').cmdloop()
-    else:
-        SaltREPL('tab:complete').cmdloop()
